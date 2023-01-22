@@ -45,7 +45,7 @@ services:
 
   mycododaemon:
     container_name: mycodo_daemon
-    image: app
+    image: ${MYCODO_APP_IMAGE}
     restart: always
     environment:
       - TZ=America/New_York  # See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for valid time zones
@@ -73,7 +73,7 @@ services:
 
   mycodoflask:
     container_name: mycodo_flask
-    image: app
+    image: ${MYCODO_APP_IMAGE}
     hostname: mycodohost  # Change to your desired hostname
     build:
       context: ./

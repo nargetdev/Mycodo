@@ -1,0 +1,267 @@
+name: mycodo
+services:
+  mycododaemon:
+    command:
+    - bash
+    - -c
+    - wget --quiet --no-check-certificate -p http://mycodo_nginx/ -O /dev/null &&
+      PYTHONPATH=/home/mycodo /home/mycodo/env/bin/python mycodo_daemon.py
+    container_name: mycodo_daemon
+    depends_on:
+      mycodoflask:
+        condition: service_started
+    environment:
+      TZ: America/New_York
+    image: nargetdev/mycodoapp:test-v8.15.3
+    networks:
+      default: null
+    privileged: true
+    restart: always
+    volumes:
+    - type: volume
+      source: mycodo
+      target: /usr/local/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_env
+      target: /home/mycodo/env
+      volume: {}
+    - type: volume
+      source: mycodo_databases
+      target: /home/mycodo/databases
+      volume: {}
+    - type: volume
+      source: mycodo_cameras
+      target: /home/mycodo/cameras
+      volume: {}
+    - type: volume
+      source: mycodo_custom_functions
+      target: /home/mycodo/mycodo/functions/custom_functions
+      volume: {}
+    - type: volume
+      source: mycodo_custom_actions
+      target: /home/mycodo/mycodo/actions/custom_actions
+      volume: {}
+    - type: volume
+      source: mycodo_custom_inputs
+      target: /home/mycodo/mycodo/inputs/custom_inputs
+      volume: {}
+    - type: volume
+      source: mycodo_custom_outputs
+      target: /home/mycodo/mycodo/outputs/custom_outputs
+      volume: {}
+    - type: volume
+      source: mycodo_custom_widgets
+      target: /home/mycodo/mycodo/widgets/custom_widgets
+      volume: {}
+    - type: volume
+      source: mycodo_custom_user_scripts
+      target: /home/mycodo/mycodo/user_scripts
+      volume: {}
+    - type: volume
+      source: mycodo_log
+      target: /var/log/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_ssl_certs
+      target: /home/mycodo/mycodo/mycodo_flask/ssl_certs
+      volume: {}
+    - type: bind
+      source: /dev
+      target: /dev
+      bind:
+        create_host_path: true
+    - type: bind
+      source: /sys
+      target: /sys
+      bind:
+        create_host_path: true
+    - type: bind
+      source: /Users/mswhiskers/007/ethfs/01__SRC/Mycodo/bindmount/opt
+      target: /opt
+      bind:
+        create_host_path: true
+  mycodoflask:
+    build:
+      context: /Users/mswhiskers/007/ethfs/01__SRC/Mycodo
+      dockerfile: docker/Dockerfile
+    command:
+    - /home/mycodo/env/bin/python
+    - -m
+    - gunicorn
+    - --workers
+    - "1"
+    - --bind
+    - unix:/usr/local/mycodo/mycodoflask.sock
+    - start_flask_ui:app
+    container_name: mycodo_flask
+    depends_on:
+      mycodoinfluxdb:
+        condition: service_started
+    environment:
+      TZ: America/New_York
+    hostname: mycodohost
+    image: nargetdev/mycodoapp:test-v8.15.3
+    networks:
+      default: null
+    privileged: true
+    restart: always
+    volumes:
+    - type: volume
+      source: mycodo
+      target: /usr/local/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_env
+      target: /home/mycodo/env
+      volume: {}
+    - type: volume
+      source: mycodo_databases
+      target: /home/mycodo/databases
+      volume: {}
+    - type: volume
+      source: mycodo_cameras
+      target: /home/mycodo/cameras
+      volume: {}
+    - type: volume
+      source: mycodo_custom_functions
+      target: /home/mycodo/mycodo/functions/custom_functions
+      volume: {}
+    - type: volume
+      source: mycodo_custom_actions
+      target: /home/mycodo/mycodo/actions/custom_actions
+      volume: {}
+    - type: volume
+      source: mycodo_custom_inputs
+      target: /home/mycodo/mycodo/inputs/custom_inputs
+      volume: {}
+    - type: volume
+      source: mycodo_custom_outputs
+      target: /home/mycodo/mycodo/outputs/custom_outputs
+      volume: {}
+    - type: volume
+      source: mycodo_custom_widgets
+      target: /home/mycodo/mycodo/widgets/custom_widgets
+      volume: {}
+    - type: volume
+      source: mycodo_custom_user_scripts
+      target: /home/mycodo/mycodo/user_scripts
+      volume: {}
+    - type: volume
+      source: mycodo_custom_user_css
+      target: /home/mycodo/mycodo/mycodo_flask/static/css/user_css
+      volume: {}
+    - type: volume
+      source: mycodo_custom_user_js
+      target: /home/mycodo/mycodo/mycodo_flask/static/js/user_js
+      volume: {}
+    - type: volume
+      source: mycodo_log
+      target: /var/log/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_ssl_certs
+      target: /home/mycodo/mycodo/mycodo_flask/ssl_certs
+      volume: {}
+    - type: volume
+      source: mycodo_influxdb
+      target: /var/lib/influxdb
+      volume: {}
+    - type: bind
+      source: /dev
+      target: /dev
+      bind:
+        create_host_path: true
+    - type: bind
+      source: /var/run/docker.sock
+      target: /var/run/docker.sock
+      read_only: true
+      bind:
+        create_host_path: true
+  mycodoinfluxdb:
+    environment:
+      DOCKER_INFLUXDB_INIT_BUCKET: mycodo_db
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_ORG: mycodo
+      DOCKER_INFLUXDB_INIT_PASSWORD: mmdu77sj3nIoiajjs
+      DOCKER_INFLUXDB_INIT_USERNAME: mycodo
+    image: influxdb:latest
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 8086
+      published: "8086"
+      protocol: tcp
+    volumes:
+    - type: volume
+      source: mycodo_influxdb
+      target: /var/lib/influxdb2
+      volume: {}
+  mycodonginx:
+    build:
+      context: /Users/mswhiskers/007/ethfs/01__SRC/Mycodo
+      dockerfile: docker/nginx/Dockerfile
+    container_name: mycodo_nginx
+    depends_on:
+      mycodoflask:
+        condition: service_started
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 80
+      published: "80"
+      protocol: tcp
+    - mode: ingress
+      target: 443
+      published: "443"
+      protocol: tcp
+    restart: always
+    volumes:
+    - type: volume
+      source: mycodo
+      target: /usr/local/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_log
+      target: /var/log/mycodo
+      volume: {}
+    - type: volume
+      source: mycodo_ssl_certs
+      target: /home/mycodo/mycodo/mycodo_flask/ssl_certs
+      volume: {}
+networks:
+  default:
+    name: mycodo_default
+volumes:
+  mycodo:
+    name: mycodo_mycodo
+  mycodo_cameras:
+    name: mycodo_mycodo_cameras
+  mycodo_custom_actions:
+    name: mycodo_mycodo_custom_actions
+  mycodo_custom_functions:
+    name: mycodo_mycodo_custom_functions
+  mycodo_custom_inputs:
+    name: mycodo_mycodo_custom_inputs
+  mycodo_custom_outputs:
+    name: mycodo_mycodo_custom_outputs
+  mycodo_custom_user_css:
+    name: mycodo_mycodo_custom_user_css
+  mycodo_custom_user_js:
+    name: mycodo_mycodo_custom_user_js
+  mycodo_custom_user_scripts:
+    name: mycodo_mycodo_custom_user_scripts
+  mycodo_custom_widgets:
+    name: mycodo_mycodo_custom_widgets
+  mycodo_databases:
+    name: mycodo_mycodo_databases
+  mycodo_env:
+    name: mycodo_mycodo_env
+  mycodo_influxdb:
+    name: mycodo_mycodo_influxdb
+  mycodo_log:
+    name: mycodo_mycodo_log
+  mycodo_ssl_certs:
+    name: mycodo_mycodo_ssl_certs
